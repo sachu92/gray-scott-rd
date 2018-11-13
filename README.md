@@ -28,5 +28,8 @@ DT = 1
 
 * [Armadillo](http://arma.sourceforge.net/) : to perform matrix operations
 
+## Compilation
+After installing the dependincies, just run `make`
+
 ---
 PS:  This code is a work in progress and is written only for educational purpose.
