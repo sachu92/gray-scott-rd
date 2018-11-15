@@ -19,15 +19,16 @@
 #include <vector>
 #include <fstream>
 #include <random>
-#include <armadillo>
-#include <pngwriter.h>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
+
 
 using namespace std;
-using namespace arma;
+using namespace cv;
 
 // Concentration fields
-mat u_val;
-mat v_val;
+Mat u_val;
+Mat v_val;
 
 // system parameters
 int SIZE; // System size
@@ -74,28 +75,25 @@ void evolve()
     double lapu;
     double lapv;
 
-    mat laplacian = {{0.0, 1.0, 0.0},
-                     {1.0, -4.0, 1.0},
-                     {0.0, 1.0, 0.0}
-    };
+    Mat laplacian = (Mat_<double>(3,3) << 0.0, 1.0, 0.0, 1.0, -4.0, 1.0, 0.0, 1.0, 0.0);
 
-    mat lap_u;
-    mat lap_v;
+    Mat lap_u;
+    Mat lap_v;
     // The laplacian is obtained by applying a 2D convolution filter
-    lap_u = conv2(u_val, laplacian, "same");
-    lap_v = conv2(v_val, laplacian, "same");
+    filter2D(u_val, lap_u, u_val.depth(), laplacian);
+    filter2D(v_val, lap_v, v_val.depth(), laplacian);
     for(i = 0;i < SIZE;i++)
     {
         for(j = 0;j < SIZE;j++)
         {
-            uval = u_val.at(i, j);
-            vval = v_val.at(i, j);
-            lapu = lap_u.at(i, j);
-            lapv = lap_v.at(i, j);
+            uval = u_val.at<double>(i, j);
+            vval = v_val.at<double>(i, j);
+            lapu = lap_u.at<double>(i, j);
+            lapv = lap_v.at<double>(i, j);
 
             // Updated concentration fields
-            u_val.at(i, j) = uval + (U_DIFF*lapu - uval*vval*vval + FEED*(1.0-uval))*dt;
-            v_val.at(i, j) = vval + (V_DIFF*lapv + uval*vval*vval - (KILL + FEED)*vval)*dt;
+            u_val.at<double>(i, j) = uval + (U_DIFF*lapu - uval*vval*vval + FEED*(1.0-uval))*dt;
+            v_val.at<double>(i, j) = vval + (V_DIFF*lapv + uval*vval*vval - (KILL + FEED)*vval)*dt;
         }
     }
     return;
@@ -105,22 +103,25 @@ void evolve()
 void print(int t)
 {
     int i, j;
-    ofstream fout;
     char filename[256];
     sprintf(filename, "config.%03d.png", t);
+    Mat imgMat(SIZE, SIZE, CV_8UC3);
 
-    pngwriter png(SIZE,SIZE,0,filename);
+//    pngwriter png(SIZE,SIZE,0,filename);
     double val;
 
     for(i = 0;i < SIZE;i++)
     {
         for(j = 0;j < SIZE;j++)
         {
-            val = (u_val.at(i, j)-0.5)*2.0;
-            png.plot(i+1, j+1, red(val), green(val), blue(val));
+            val = (u_val.at<double>(i, j)-0.5)*2.0;
+            Vec3b& bgr = imgMat.at<Vec3b>(i,j);
+            bgr[0] = saturate_cast<uchar>(blue(val)*UCHAR_MAX);
+            bgr[1] = saturate_cast<uchar>(green(val)*UCHAR_MAX);
+            bgr[2] = saturate_cast<uchar>(red(val)*UCHAR_MAX);
         }
     }
-    png.close();
+    imwrite(filename, imgMat);
     return;
 }
 
@@ -130,16 +131,18 @@ void setup_initial()
     int i, j;
     default_random_engine generator;
     uniform_real_distribution<double> distribution(0.0,1.0);
-    u_val.ones(SIZE, SIZE);
-    v_val.zeros(SIZE, SIZE);
 
+    u_val.create(SIZE, SIZE, CV_64F);
+    u_val = Scalar::all(1.0);
+    v_val.create(SIZE, SIZE, CV_64F);
+    v_val - Scalar::all(0.0);
     // Perturbation
     for(i = SIZE/2-20;i<SIZE/2+20;i++)
     {
         for(j = SIZE/2-20;j<SIZE/2+20;j++)
         {
-            u_val.at(i, j) = 0.5 + 0.2*(distribution(generator) - 0.5);
-            v_val.at(i, j) = 0.25 + 0.2*(distribution(generator) - 0.5);
+            u_val.at<double>(i, j) = 0.5 + 0.2*(distribution(generator) - 0.5);
+            v_val.at<double>(i, j) = 0.25 + 0.2*(distribution(generator) - 0.5);
         }
     }
     return;

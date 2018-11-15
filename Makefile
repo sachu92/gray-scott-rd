@@ -1,15 +1,18 @@
+# Declaration of variables
 CC = g++
 DEBUG_FLAG = #-g
 OPTI_FLAGS = -O3
-WARN_FLAGS = -Wall -Wextra -Wpedantic
-INCLUDE_FLAGS = -I/usr/include/freetype2
+WARN_FLAGS =
+INCLUDE_FLAGS = #-I/usr/include/freetype2
 CC_FLAGS = -std=c++0x $(DEBUG_FLAG) $(OPTI_FLAGS) $(WARN_FLAGS) $(INCLUDE_FLAGS)
 
+# File names
 EXEC = gsrd.out
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
 HEADERS = $(wildcard *.hpp)
-LIBFLAGS = -larmadillo -lpng -lPNGwriter -lz -lfreetype
+LIBFLAGS = -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
+
 
 all: $(EXEC)
 
